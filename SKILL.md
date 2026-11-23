@@ -32,7 +32,7 @@ Run every command from this folder: `python3 logi_mx.py <command>`.
    - The script makes a backup (`backup-logi-mx-<time>` next to `settings.db`) and re-reads the file afterwards to confirm the change stuck.
 4. **Actions Ring**:
    - No ring profile for the app yet: `ring --create --dry-run`, then `ring --create`.
-     - Windows only. It writes the whole profile (actions, the agents folder, icons) as the Options+ UI does, then restarts the Logi Plugin Service.
+     - Windows only. It writes the whole profile (actions, the agents folder, icons) as the Options+ UI does, then restarts the Logi Plugin Service. Tested live on Windows 11 with an MX Master 4.
      - Defaults: `--process herdr-app --display-name Herdr --device-type Loupedeck72` (the MX Master 4 ring).
    - Elsewhere, or if the person prefers it, they add the actions in Options+ (Actions Ring → the app → "Keyboard shortcut" actions, plus one folder). `ring --dry-run` prints the table of what is missing.
    - With the actions in place, `ring` sets the icons. It is safe to run again.
@@ -71,7 +71,7 @@ All of it applies only while Herdr is the foreground app: Options+ profiles and 
   - Icon files are `ActionIcons/<action name>.ict`: JSON whose Image item is a base64 SVG.
   - A one-color SVG is tinted by the ring theme. A multi-color one is drawn as is on `backgroundColor`, so `colored: true` uses a white background.
 - **Platforms**
-  - Tested on Windows 11 from WSL. Native Windows Python uses the same code.
+  - Tested end to end on Windows 11 from WSL (MX Master 4): keys, buttons, `ring --create`, ring icons. Native Windows Python uses the same code.
   - macOS paths (`~/Library/Application Support/LogiOptionsPlus`, `…/Logi/LogiPluginService/Applications`) and process names are **unverified**. Check that they exist and run `status` and `--dry-run` before writing; pass `--options-dir` / `--ring-dir` if they differ.
   - Linux has no Options+ and no ring. `logiops` prints a `logid.cfg` snippet for the person to merge, which needs sudo. It is global, not per app, which is why the combos must be harmless elsewhere.
 

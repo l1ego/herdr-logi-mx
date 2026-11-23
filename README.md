@@ -33,4 +33,10 @@ Install as a skill for Claude Code, Codex and other agents:
 bash install.sh
 ```
 
-Windows is tested (from WSL). macOS uses the same Options+ formats, but its paths are unverified. Linux gets a logiops snippet.
+## Platforms
+
+| | Herdr keys | Gestures, back, forward | Actions Ring |
+| --- | --- | --- | --- |
+| Windows 11 (native or WSL) | tested | tested | tested (`ring --create` and icons) |
+| macOS | should work | same Options+ format, paths unverified | add actions in Options+, then `ring` for icons (unverified) |
+| Linux | should work | logiops snippet (`logiops`), unverified | none (no Options+) |
