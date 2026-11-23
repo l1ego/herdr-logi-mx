@@ -1,0 +1,36 @@
+{
+  "app": "herdr",
+  "ring_folder": { "label": "Agents", "icon": "agents" },
+  "actions": [
+    { "id": "space-prev",  "combo": "ctrl-shift-f1",  "mouse": "gesture-up",    "herdr": "space.prev" },
+    { "id": "space-next",  "combo": "ctrl-shift-f2",  "mouse": "gesture-down",  "herdr": "space.next" },
+    { "id": "tab-prev",    "combo": "ctrl-shift-f3",  "mouse": "gesture-left",  "herdr": "tab.prev" },
+    { "id": "tab-next",    "combo": "ctrl-shift-f4",  "mouse": "gesture-right", "herdr": "tab.next" },
+    { "id": "agent-prev",  "combo": "ctrl-shift-f5",  "mouse": "back",          "herdr": "agent.prev" },
+    { "id": "agent-next",  "combo": "ctrl-shift-f6",  "mouse": "forward",       "herdr": "agent.next" },
+    { "id": "picker",      "combo": "ctrl-shift-f7",  "mouse": "gesture-click",
+      "herdr": "mod.open:picker", "herdr_omarchy": "mod.open:omarchy-picker" },
+
+    { "id": "palette",     "combo": "ctrl-shift-f8",  "ring": 1, "label": "Palette", "icon": "palette",
+      "herdr": "app.palette", "herdr_omarchy": "mod.open:omarchy-palette" },
+    { "id": "lazygit",     "combo": "ctrl-shift-f9",  "ring": 2, "label": "Lazygit", "icon": "lazygit",
+      "herdr": "mod.open:lazygit" },
+    { "id": "split-right", "combo": "ctrl-shift-f10", "ring": 3, "label": "Split right", "icon": "split-right",
+      "herdr": "pane.split:right" },
+    { "id": "split-down",  "combo": "ctrl-shift-f11", "ring": 4, "label": "Split down", "icon": "split-down",
+      "herdr": "pane.split:down" },
+    { "id": "zoom",        "combo": "ctrl-shift-f12", "ring": 5, "label": "Zoom pane", "icon": "zoom",
+      "herdr": "pane.zoom" },
+    { "id": "copy",        "combo": "ctrl-shift-c",   "ring": 6, "label": "Copy", "icon": "copy",
+      "herdr": "terminal.copy", "section": "terminal" },
+    { "id": "paste",       "combo": "ctrl-shift-v",   "ring": 7, "label": "Paste", "icon": "paste",
+      "herdr": "terminal.paste", "section": "terminal" },
+
+    { "id": "claude",      "combo": "ctrl-alt-shift-f1", "ring": "folder", "label": "Claude", "icon": "claude", "colored": true,
+      "herdr": { "command": "tab.new", "args": { "name": "claude", "argv": ["claude"] } } },
+    { "id": "codex",       "combo": "ctrl-alt-shift-f2", "ring": "folder", "label": "Codex", "icon": "codex",
+      "herdr": { "command": "tab.new", "args": { "name": "codex", "argv": ["codex"] } } },
+    { "id": "kimi",        "combo": "ctrl-alt-shift-f3", "ring": "folder", "label": "Kimi", "icon": "kimi", "colored": true,
+      "herdr": { "command": "tab.new", "args": { "name": "kimi", "argv": ["kimi"] } } }
+  ]
+}
