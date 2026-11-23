@@ -16,7 +16,7 @@ Run every command from this folder: `python3 logi_mx.py <command>`.
 | --- | --- | --- |
 | Herdr keys | `keys.json` in each Herdr home (`~/.config/herdr-app`, and the Windows one from WSL) | `keys` |
 | Gesture button, back, forward | Logi Options+ `settings.db`, the app's own profile | `buttons` |
-| Actions Ring icons | Logi Plugin Service `Applications/Loupedeck72/<app>/Profiles/<id>` | `ring` |
+| Actions Ring | Logi Plugin Service `Applications/Loupedeck72/<app>/Profiles/<id>` | `ring --create`, `ring` |
 | Linux (no Options+) | `logid.cfg` for logiops | `logiops` |
 
 ## Procedure
@@ -31,8 +31,11 @@ Run every command from this folder: `python3 logi_mx.py <command>`.
    - Tell the person first: the command closes the Options+ window and restarts its agent for a few seconds. The mouse works as a plain mouse meanwhile.
    - The script makes a backup (`backup-logi-mx-<time>` next to `settings.db`) and re-reads the file afterwards to confirm the change stuck.
 4. **Actions Ring**:
-   - The ring actions are added by the person in Options+ (Actions Ring → the app → "Keyboard shortcut" actions, plus one folder for the agents). `ring --dry-run` prints the table of what is missing.
-   - Once the actions exist, `ring` sets their icons and restarts the Logi Plugin Service.
+   - No ring profile for the app yet: `ring --create --dry-run`, then `ring --create`.
+     - Windows only. It writes the whole profile (actions, the agents folder, icons) as the Options+ UI does, then restarts the Logi Plugin Service.
+     - Defaults: `--process herdr-app --display-name Herdr --device-type Loupedeck72` (the MX Master 4 ring).
+   - Elsewhere, or if the person prefers it, they add the actions in Options+ (Actions Ring → the app → "Keyboard shortcut" actions, plus one folder). `ring --dry-run` prints the table of what is missing.
+   - With the actions in place, `ring` sets the icons. It is safe to run again.
 5. Ask the person to try it with Herdr in front: gestures up/down (spaces), left/right (tabs), back/forward (agents), and the ring.
 
 All of it applies only while Herdr is the foreground app: Options+ profiles and the ring are per app.
@@ -62,6 +65,9 @@ All of it applies only while Herdr is the foreground app: Options+ profiles and 
   - Edit only with the agent stopped: copy the files out, checkpoint, edit, delete `-wal`/`-shm`, copy back, start the agent.
 - **Ring**
   - `ProfileInfo.json` → `profileActions`: `$@Generic___@KeyboardKey` with `keyboardKey` = `ControlOrCommand+Shift+F9___68158480___Ctrl+Shift+F9___win-<VK>#¤%&+?<mods>#¤%&+?68158480#¤%&+?0`, where mods is 132 for ctrl+shift and 134 for ctrl+alt+shift. A folder is `$@Generic___@OpenFolder`.
+  - `ApplicationInfo.json` ties the folder to the app's process.
+  - The layout has one 8-place page and a `folderPages` entry per folder, holding only the used places.
+  - Nothing outside the app's folder refers to the profile (only `CurrentApplication` in `LoupedeckSettings.ini`).
   - Icon files are `ActionIcons/<action name>.ict`: JSON whose Image item is a base64 SVG.
   - A one-color SVG is tinted by the ring theme. A multi-color one is drawn as is on `backgroundColor`, so `colored: true` uses a white background.
 - **Platforms**

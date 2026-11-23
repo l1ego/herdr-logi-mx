@@ -151,6 +151,38 @@ class Ring(unittest.TestCase):
             self.assertEqual(L.plan_ring_icons(pdir, MAP)[0], [])
 
 
+class RingCreate(unittest.TestCase):
+    def test_keyboard_key_matches_ui(self):
+        sep = "#\u00a4%&+?"
+        self.assertEqual(L.ring_keyboard_key("ctrl-alt-shift-f1"),
+                         f"ControlOrCommand+AltOrOption+Shift+F1___68158480___Ctrl+Alt+Shift+F1___win-112{sep}134{sep}68158480{sep}0")
+        self.assertEqual(L.ring_keyboard_key("ctrl-shift-f9"),
+                         f"ControlOrCommand+Shift+F9___68158480___Ctrl+Shift+F9___win-120{sep}132{sep}68158480{sep}0")
+        self.assertEqual(L.ring_keyboard_key("ctrl-shift-c"),
+                         f"ControlOrCommand+Shift+KeyC___68158480___Ctrl+Shift+C___win-67{sep}132{sep}68158480{sep}0")
+
+    def test_build_and_reread(self):
+        info, prof, icons = L.build_ring_profile(MAP, "herdr-app", "Herdr")
+        self.assertEqual(info["processOrBundleName"], "herdr-app")
+        main = prof["layout"]["layoutModes"][0]["workspaces"][0]["pressPages"][0]["controls"]
+        folder = prof["layout"]["folderPages"][0]
+        self.assertEqual(len(main), 8)
+        self.assertEqual(len(folder["controls"]), 3)
+        fa = next(a for a in prof["profileActions"] if a["templateActionName"].endswith("@OpenFolder"))
+        self.assertEqual(fa["actionParameters"]["parameters"]["folderName"], folder["name"])
+        self.assertEqual(main[7]["pressAction"], fa["name"])
+        self.assertEqual(len(icons), 11)
+        with tempfile.TemporaryDirectory() as tmp:
+            pdir = os.path.join(tmp, "Loupedeck72", "herdr-app", "Profiles", prof["name"])
+            L.write_json(os.path.join(tmp, "Loupedeck72", "herdr-app", "ApplicationInfo.json"), info)
+            L.write_json(os.path.join(pdir, "ProfileInfo.json"), prof)
+            for n, icon in icons.items():
+                L.write_json(os.path.join(pdir, "ActionIcons", n + ".ict"), icon)
+            self.assertEqual(list(L.ring_profiles(tmp, "herdr")), [pdir])
+            writes, missing = L.plan_ring_icons(pdir, MAP)
+            self.assertEqual((writes, missing), ([], []))  # `ring` finds nothing left to do
+
+
 class Logiops(unittest.TestCase):
     def test_snippet(self):
         s = L.logiops_snippet(MAP)

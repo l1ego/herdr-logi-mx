@@ -20,7 +20,8 @@ By hand:
 python3 logi_mx.py status
 python3 logi_mx.py keys        # Herdr keys.json
 python3 logi_mx.py buttons     # Logi Options+: gestures, back, forward
-python3 logi_mx.py ring        # Actions Ring icons (add the actions in Options+ first)
+python3 logi_mx.py ring --create  # Actions Ring for the app, with icons (Windows)
+python3 logi_mx.py ring        # update the icons of an existing ring
 python3 logi_mx.py logiops     # Linux: logid.cfg snippet
 ```
 

@@ -561,10 +561,14 @@ def plan_ring_icons(profile_dir, mapping):
 
 def cmd_ring(args, host, mapping):
     ring_dir = args.ring_dir or host.ring_dir()
+    if args.create:
+        if not host.is_windows and not args.ring_dir:
+            raise SystemExit("--create is only known for Windows; on macOS add the actions in Options+")
+        return create_ring(host, ring_dir, mapping, args.process, args.display_name, args.device_type, args.dry_run)
     profiles = list(ring_profiles(ring_dir, mapping["app"])) if ring_dir and os.path.isdir(ring_dir) else []
     if not profiles:
-        print("No Actions Ring profile for this app yet. In Logi Options+: Actions Ring -> add the app,")
-        print("then add these 'Keyboard shortcut' actions and run this again for the icons:")
+        print("No Actions Ring profile for this app yet. Either `ring --create` (Windows), or in Logi Options+:")
+        print("Actions Ring -> add the app, add these 'Keyboard shortcut' actions, then run `ring` for the icons:")
         print_ring_table(mapping["actions"], mapping)
         return
     restart = False
@@ -595,6 +599,145 @@ def cmd_ring(args, host, mapping):
     if restart:
         print("  ring service restarted" if host.start("LogiPluginService", exe) else "  ! start Logi Plugin Service by hand")
 
+
+
+# ring --create: a whole ring profile, as the Options+ UI writes it (Windows)
+
+SEP = "#¤%&+?"
+T7 = "Loupedeck.Service.Devices.Loupedeck7Devices.{}, LoupedeckService"
+KEY_DESC = "Activate a keyboard shortcut with a single press or hold down for continuous use like a keyboard key"
+
+
+def ring_keyboard_key(combo):
+    """'ctrl-shift-f9' -> the Options+ ring keyboardKey string (Windows)."""
+    mods, key = parse_combo(combo)
+    if "super" in mods:
+        raise ValueError("the Windows key is not supported in ring combos")
+    tok = {"ctrl": "ControlOrCommand", "alt": "AltOrOption", "shift": "Shift"}
+    shown = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift"}
+    if len(key) == 1 and key.isalpha():
+        ktok, kshow = "Key" + key.upper(), key.upper()
+    elif len(key) == 1:
+        ktok, kshow = "Digit" + key, key
+    else:
+        ktok = kshow = key.upper() if re.fullmatch(r"f\d+", key) else key.capitalize()
+    bits = sum({"ctrl": 128, "alt": 2, "shift": 4}[m] for m in mods)
+    left = "+".join([tok[m] for m in mods] + [ktok])
+    right = "+".join([shown[m] for m in mods] + [kshow])
+    return f"{left}___68158480___{right}___win-{win_vk(key)}{SEP}{bits}{SEP}68158480{SEP}0"
+
+
+def _id():
+    import uuid
+    return uuid.uuid4().hex.upper()
+
+
+def _page(name, display, controls, description=None, size=8):
+    return {"$type": T7.format("ProfileLayoutPage7"), "name": name, "displayName": display,
+            "description": description,
+            "controls": [{"$type": T7.format("ProfileLayoutControl7"), "controlId": i,
+                          "pressAction": controls.get(i), "rotateAction": None} for i in range(size)]}
+
+
+def build_ring_profile(mapping, app_name, display_name, device="Loupedeck72"):
+    """Returns (ApplicationInfo, ProfileInfo, {action name: ict})."""
+    actions, icons, main, folder = [], {}, {}, {}
+    def add(label, params, template, group, supergroup, desc, icon=None, colored=False):
+        name = "$@Generic___@ProfileAction___" + _id()
+        actions.append({"$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService", "isCommand": True,
+                        "name": name, "templateActionName": template,
+                        "actionParameters": {"$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+                                             "parameters": dict({"$type": "Loupedeck.StringDictionaryNoCase, PluginApi"}, **params),
+                                             "count": 1},
+                        "displayName": label, "description": desc, "groupName": group, "superGroupName": supergroup,
+                        "isProfileAction": True, "isMultiState": False, "isResetCommand": False,
+                        "adjustmentName": None, "states": None})
+        if icon:
+            icons[name] = ict(label, icon_svg(icon), colored)
+        return name
+    ring = [a for a in mapping["actions"] if a.get("ring")]
+    for a in sorted((a for a in ring if a["ring"] != "folder"), key=lambda a: a["ring"]):
+        main[a["ring"] - 1] = add(a.get("label", a["id"]), {"keyboardKey": ring_keyboard_key(a["combo"])},
+                                  "$@Generic___@KeyboardKey", "", "@macro", KEY_DESC, a.get("icon"), a.get("colored", False))
+    in_folder = [a for a in ring if a["ring"] == "folder"]
+    folder_pages = []
+    if in_folder:
+        f = mapping.get("ring_folder", {})
+        fid = _id()
+        for i, a in enumerate(in_folder[:8]):
+            folder[i] = add(a.get("label", a["id"]), {"keyboardKey": ring_keyboard_key(a["combo"])},
+                            "$@Generic___@KeyboardKey", "", "@macro", KEY_DESC, a.get("icon"), a.get("colored", False))
+        place = f.get("place", 8) - 1
+        if place in main:
+            raise SystemExit(f"ring place {place + 1} is taken by an action and by the folder")
+        fname = "$@Generic___@ProfileAction___" + fid
+        actions.append({"$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService", "isCommand": True,
+                        "name": fname, "templateActionName": "$@Generic___@OpenFolder",
+                        "actionParameters": {"$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+                                             "parameters": {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi", "folderName": fid},
+                                             "count": 1},
+                        "displayName": f.get("label", "Folder"), "description": "", "groupName": "Folders",
+                        "superGroupName": "@navigation", "isProfileAction": True, "isMultiState": False,
+                        "isResetCommand": False, "adjustmentName": None, "states": None})
+        if f.get("icon"):
+            icons[fname] = ict(f.get("label", "Folder"), icon_svg(f["icon"]), f.get("colored", False))
+        main[place] = fname
+        folder_pages.append(_page(fid, "Folder", folder, "", size=len(folder)))  # the UI keeps only used places
+    ws = _id()
+    layout = {"$type": T7.format("ProfileLayout7"), "deviceType": device, "profileFlags": "None",
+              "layoutModes": [{"$type": T7.format("ProfileLayoutMode7"), "deviceType": device, "modeName": "main",
+                               "parentModeName": None, "actions": None, "dynamicButtonPages": None,
+                               "dynamicEncoderPages": None,
+                               "workspaces": [{"$type": T7.format("ProfileLayoutWorkspace7"), "name": ws,
+                                               "displayName": "Workspace 1", "description": None,
+                                               "pressPages": [_page(_id(), "Page (1)", main)],
+                                               "rotatePages": [_page(_id(), "Dial Page", {})]}],
+                               "homeWorkspaceName": ws}],
+              "folderPages": folder_pages}
+    pid = _id()
+    profile = {"$type": "Loupedeck.Service.ApplicationProfile, LoupedeckService", "name": pid, "profileFlags": "None",
+               "displayName": f"{display_name} Profile", "description": None, "deviceType": device,
+               "applicationName": app_name, "nativePluginName": None, "hasNativePlugin": False,
+               "additionalNativePluginNames": ["DefaultWin"],
+               "lastModifiedTimeUtc": time.strftime("%Y-%m-%dT%H:%M:%S.0000000Z", time.gmtime()),
+               "profileSettings": {"$type": "Loupedeck.DictionaryNoCase`1[[System.String, System.Private.CoreLib]], PluginApi"},
+               "actionImages90": None, "actionImages60": None, "wheelImages": None, "actionColors": None,
+               "layout": layout, "macroCommands": [], "macroAdjustments": [], "profileCommands": [],
+               "profileAdjustments": [], "conversionHistory": None, "packageName": None, "packageVersion": None,
+               "profileActions": actions}
+    info = {"$type": "Loupedeck.Service.SupportedApplicationInfo, LoupedeckService", "name": app_name,
+            "displayName": display_name, "description": None, "deviceType": device, "nativePluginName": None,
+            "hasNativePlugin": False, "processOrBundleName": app_name,
+            "modes": [{"$type": "Loupedeck.Service.ApplicationMode, LoupedeckService", "name": "main",
+                       "parentModeName": None, "displayName": "Main"}],
+            "defaultProfileName": None, "isEnabled": True}
+    return info, profile, icons
+
+
+def write_json(path, obj, newline="\r\n"):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline=newline) as f:
+        f.write(json.dumps(obj, indent=4, ensure_ascii=False))
+
+
+def create_ring(host, ring_dir, mapping, process, display_name, device, dry_run):
+    app_dir = os.path.join(ring_dir, device, process)
+    if os.path.exists(app_dir):
+        raise SystemExit(f"{app_dir} exists: run `ring` to update icons, or move it away to recreate it")
+    info, profile, icons = build_ring_profile(mapping, process, display_name, device)
+    print(f"== new ring profile {app_dir}")
+    for a in profile["profileActions"]:
+        print(f"  + {a['displayName']}")
+    if dry_run:
+        return
+    exe = host.exe_path("LogiPluginService")
+    host.stop("LogiPluginService")
+    pdir = os.path.join(app_dir, "Profiles", profile["name"])
+    write_json(os.path.join(app_dir, "ApplicationInfo.json"), info)
+    write_json(os.path.join(pdir, "ProfileInfo.json"), profile)
+    for name, icon in icons.items():
+        write_json(os.path.join(pdir, "ActionIcons", name + ".ict"), icon)
+    print("  ring service restarted" if host.start("LogiPluginService", exe) else "  ! start Logi Plugin Service by hand")
 
 def print_ring_table(actions, mapping):
     for a in actions:
@@ -675,6 +818,10 @@ def main(argv=None):
     b.add_argument("--options-dir")
     r = sub.add_parser("ring")
     r.add_argument("--ring-dir")
+    r.add_argument("--create", action="store_true", help="write a whole ring profile for the app (Windows)")
+    r.add_argument("--process", default="herdr-app", help="the app's process name (default herdr-app)")
+    r.add_argument("--display-name", default="Herdr")
+    r.add_argument("--device-type", default="Loupedeck72", help="Loupedeck72 is the MX Master 4 Actions Ring")
     lo = sub.add_parser("logiops")
     lo.add_argument("--device", default="MX Master 4")
     for p in (k, b, r):
